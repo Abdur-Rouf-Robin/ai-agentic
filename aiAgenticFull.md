@@ -6,7 +6,7 @@
 - Training teaches the weights. Inference is a forward pass that samples or picks the next token.
 - Temperature near 0 is repetitive and steadier. Higher temperature is more varied and less reliable.
 - It will produce a confident wrong answer. That is a hallucination. You check facts against a system you trust.
-- For a viva, say you would use a model as an assistant beside Postgres, not as the source of a demurrage figure.
+- Use the model as an assistant beside Postgres. Do not use it as the source of a demurrage figure.
 - A model is a well-read colleague who sometimes invents a citation. You do not let them sign the cheque.
 - careful: Sending the model a question whose answer must come from your tables, and not looking the row up.
 - Can the model replace the laytime function?
