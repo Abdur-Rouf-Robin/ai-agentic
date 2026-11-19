@@ -1,471 +1,360 @@
 # AI Agentic
 
-## LLM fundamentals
+## chapter 1 LLM fundamentals
 
-- A large language model continues text. It predicts the next token from the tokens it has seen. It is not a database and it is not a calculator you can trust without a check.
-- Training teaches the weights. Inference is a forward pass that samples or picks the next token.
-- Temperature near 0 is repetitive and steadier. Higher temperature is more varied and less reliable.
-- It will produce a confident wrong answer. That is a hallucination. You check facts against a system you trust.
-- Use the model as an assistant beside Postgres. Do not use it as the source of a demurrage figure.
-- A model is a well-read colleague who sometimes invents a citation. You do not let them sign the cheque.
-- careful: Sending the model a question whose answer must come from your tables, and not looking the row up.
-- Can the model replace the laytime function?
-- No. The function is deterministic and tested. The model can explain the result. If the model and the function disagree, the function wins.
+- a large language model continues text. it predicts the next token from the tokens it has seen
+- training sets the weights. inference is a forward pass that picks or samples the next token
+- temperature near 0 is steadier. higher temperature is more varied and less reliable for a number
+- a confident wrong answer is a hallucination. we check facts against a system we trust
+- the model is not a database and it is not the calculator for money
+- the demurrage figure comes from the laytime function. the model may explain the sentence around it
+- these notes are the subject. the three products do not yet call a model for port calls
 
-```
+```text
 user: what is demurrage on port call 42?
-bad: ask the model to remember
-good: SQL for the number, model only to phrase the sentence
+bad: ask the model to remember the row
+good: our code loads the row, calls laytime(), and the model may phrase the result
 ```
 
-- homework
-```
-user: what is demurrage on port call 42?
-bad: ask the model to remember
-good: SQL for the number, model only to phrase the sentence
-```
+- the good path can fail closed. no row, no number, the reply says it does not know
 
-## Tokens and context window
-
-- A token is a chunk of text, often a word or a piece of a word. The context window is how many tokens the model can see at once.
-- A long Bangla word or a code identifier may be several tokens.
-- The window holds the system prompt, the history, the retrieved notes, and the answer.
-- Past the window, the oldest text falls off. The model does not remember it.
-- You pay and you wait by the token, so you do not paste a whole repository.
-- The window is a desk of a fixed size. What slides off the back is gone, however important it felt.
-- careful: Pasting the whole database schema and every log into one prompt.
-- Why did it forget the start of the chat?
-- The early tokens were outside the window. I keep a short summary and the relevant rows, not the entire transcript.
-
-```typescript
-budget = window - answer reserve
-notes must fit in the budget
+- homework of chapter 1
+```text
+// 1a  who computes 7500 for 72 allowed, 84 used, 15000 a day
+// 1b  what temperature we want for a money explanation
+// 1c  the word for a confident answer that is not true
 ```
 
-- homework
-```typescript
-budget = window - answer reserve
-notes must fit in the budget
+## chapter 2 Tokens and the context window
+
+- a token = a piece of text, often part of a word
+- the context window = the maximum tokens the model can see at once
+- the window holds the instructions, the retrieved text, and the answer it is writing
+- tokens at the start fall out when the window is full. a long chat forgets the first rule
+- we pay and we wait in proportion to tokens in plus tokens out
+- a rough English estimate is characters divided by 4. the provider's tokenizer is the real count
+
+```ts
+function roughTokens(text: string): number {
+  return Math.ceil(text.length / 4);
+}
 ```
 
-## Prompt engineering
+- a 12,000 character contract is about 3,000 tokens, before the instructions
+- we put the rule and the few retrieved rows in the window. we do not paste the whole database
+- the answer is short on purpose. a long answer spends the window and the bill
 
-- A prompt is the instruction and the evidence you give the model. Good prompting is specific, and it still is not a security boundary.
-- Say the task, the format, and what to do when the data is missing.
-- Give a short example of the output you want. That is one-shot.
-- Put the untrusted text, such as a user comment, in a clearly marked block, and tell the model it is data, not instructions.
-- Judge the result with a test, not with a feeling.
-- A prompt is a briefing. A briefing does not stop a stranger from slipping a second note into the folder. That second note is why you separate data from instructions.
-- careful: A paragraph of adjectives and no example and no rule for missing data.
-- What is one-shot versus zero-shot?
-- Zero-shot is the instruction alone. One-shot includes an example. I add an example when the format keeps drifting.
-
-```
-Task: turn this port call row into two sentences.
-If a field is null, say it is unknown. Do not invent a time.
-Row: {json}
+- homework of chapter 2
+```ts
+// 2a  rough tokens of a 400 character prompt
+// 2b  three things that spend the window
+// 2c  what happens to the first message when the window is full
 ```
 
-- homework
+## chapter 3 Prompt engineering
+
+- a prompt = the instruction plus the evidence
+- the system message is ours. the role, the task, the output shape, and the rule to say "I do not know"
+- the user message is data. we do not paste user text into the system message
+- untrusted text stays labeled as data
+- one example in the prompt is one-shot. two or three is few-shot. we use an example when the format is easy to miss
+- a reason the model writes is not proof. a source id is a check we can do in code
+
+```ts
+const system = [
+  "You answer questions about a port call.",
+  "Use only the JSON in the user message.",
+  "If the JSON does not contain the fact, say you do not know.",
+  "Reply as JSON with keys answer and sourceId.",
+].join(" ");
 ```
-Task: turn this port call row into two sentences.
-If a field is null, say it is unknown. Do not invent a time.
-Row: {json}
+
+- the user's question and the rows go in the user message as JSON
+- we do not put a secret in the system message. prompts are logged more often than password fields
+
+- homework of chapter 3
+```ts
+// 3a  which lines belong in the system message
+// 3b  add the sentence that forces "I do not know"
+// 3c  where the vessel name from the user goes
 ```
 
-## Structured outputs
+## chapter 4 Structured outputs
 
-- Structured output forces the model to return JSON that matches a schema, so your code can read it.
-- Give a JSON schema: fields, types, enums.
-- Reject and retry, or fail, when the parse fails. Do not eval the text.
-- Zod on the result is the same habit as Zod on an HTTP body.
-- The schema does not make the facts true. It makes the shape stable.
-- It is a form with boxes. The person can still write a lie in a box. They cannot easily tape a novel to the form.
-- careful: eval of model text.
-- Why not ask for 'a JSON-ish answer'?
-- Because one day the model adds a sentence before the brace and JSON.parse throws in production. A schema, or the provider's structured mode, plus Zod, is the same discipline as an API.
+- free text is hard to code against
+- a schema is a contract. Zod is the same tool we use on a POST body
+- we ask for JSON that matches the schema, or we parse and retry once
+- if it still fails, we return an error. we do not guess the missing field
+- the model is another untrusted caller
 
-```typescript
-const Summary = z.object({
-  vessel: z.string(),
-  hoursUsed: z.number().nullable(),
+```ts
+import { z } from "zod";
+
+const Answer = z.object({
+  answer: z.string(),
+  sourceId: z.string().nullable(),
 });
-const parsed = Summary.parse(JSON.parse(modelText));
+
+function readAnswer(raw: unknown) {
+  return Answer.parse(raw);
+}
 ```
 
-- homework
-```typescript
-const Summary = z.object({
-  vessel: z.string(),
-  hoursUsed: z.number().nullable(),
+- `sourceId` null means there was nothing to cite
+- a number field uses `z.number()`, and we still compare a money field to the function result
+- parse throws on a missing key. the route turns that into an error the user can see
+
+- homework of chapter 4
+```ts
+// 4a  a schema for winner: string, confidence: number from 0 to 1
+// 4b  what we do when parse throws
+// 4c  why the model does not get to skip the schema
+```
+
+## chapter 5 Embeddings and vector databases
+
+- an embedding = a list of numbers that stands for a piece of text
+- similar text lands near each other. we usually measure cosine distance
+- the embedding model and the chat model are different
+- we do not mix vectors from two embedding models in one index
+- an embedding is not a summary a person can read
+- a vector database stores the lists and finds the nearest ones
+- Postgres can do this with a vector extension. a separate product is optional
+- we store the original text and the source id beside the vector
+- we filter by tenant before the search. company A's notes are not neighbours for company B
+- we have not run a dedicated vector cluster. Postgres is the database we already operate
+
+```ts
+function cosine(a: number[], b: number[]): number {
+  let dot = 0;
+  let na = 0;
+  let nb = 0;
+  for (let i = 0; i < a.length; i++) {
+    dot += a[i] * b[i];
+    na += a[i] * a[i];
+    nb += b[i] * b[i];
+  }
+  return dot / (Math.sqrt(na) * Math.sqrt(nb));
+}
+```
+
+- cosine 1 means the same direction
+- the columns beside the vector are the text and the source id, plus the tenant id we filter on
+
+- homework of chapter 5
+```ts
+// 5a  why two vendors' vectors cannot share an index
+// 5b  the columns stored beside the vector
+// 5c  why the tenant filter happens before the nearest-neighbour search
+```
+
+## chapter 6 RAG and chunking
+
+- RAG = search our own text, put the best pieces in the prompt, then let the model answer from those pieces
+- the model was not trained on today's port call. RAG is how it sees it
+- the answer cites a source id. if the search returns nothing, the answer is that we do not know
+- RAG does not run SQL. a tool does that, and the tool is our code
+- a chunk = the piece we embed
+- too small and the sentence loses its meaning. too large and the window fills with one document
+- split on headings or paragraphs. a small overlap keeps a fact on the boundary in two chunks
+- every chunk stores the document id, the heading, and the tenant
+
+```ts
+async function answerQuestion(question: string, tenantId: string) {
+  const chunks = await searchChunks({ tenantId, question, limit: 4 });
+  if (chunks.length === 0) return { answer: "I do not know.", sourceId: null };
+  const raw = await model.complete({
+    system: "Answer only from the chunks. Include sourceId.",
+    user: JSON.stringify({ question, chunks }),
+  });
+  return Answer.parse(raw);
+}
+```
+
+- the four steps are embed the question, filter the tenant, take the top chunks, parse the JSON
+- a 20-page contract is not one vector. it is many chunks with one document id
+
+- homework of chapter 6
+```ts
+// 6a  the reply when the search is empty
+// 6b  the metadata on a chunk
+// 6c  why one vector for a whole charter party is a weak chunk
+```
+
+## chapter 7 Reranking
+
+- the first search is fast and approximate
+- a reranker reads the question and each candidate and scores them again
+- we retrieve 20 and rerank to 4. we do not rerank the whole table
+- the winners are what enter the prompt
+- this is worth the cost when the wrong paragraph would make the answer wrong
+
+```text
+search -> 20 chunks
+rerank -> 4 chunks
+prompt -> those 4, with their source ids
+```
+
+- the reranker is another model call. it spends tokens or its own compute. that is why the list is short
+- if the first search missed the right paragraph, reranking cannot invent it. the fix is chunking or the query, not a bigger rerank
+
+- homework of chapter 7
+```text
+// 7a  the two numbers: how many we retrieve, how many we keep
+// 7b  why we do not rerank every row
+// 7c  what reranking cannot fix
+```
+
+## chapter 8 Tool calling and MCP
+
+- a tool = a function we wrote. the model may ask us to run it. our process runs it
+- the model does not get a shell, a database password, or a way past a guard
+- the arguments are untrusted JSON. Zod checks them
+- the tool returns data. the model may then write a sentence
+- a money figure still comes from laytime(), not from the model's arithmetic
+- MCP is a standard shape for advertising tools to a client. a server lists tools. a host calls them
+- MCP does not add trust. a tool on MCP is still our function, with the same permission check
+- we treat an MCP tool like a route. schema in, auth, then the service
+
+```ts
+const LaytimeArgs = z.object({
+  allowedHours: z.number().positive(),
+  usedHours: z.number().nonnegative(),
+  demurragePerDay: z.number().positive(),
 });
-const parsed = Summary.parse(JSON.parse(modelText));
+
+const tools = {
+  laytime: (raw: unknown) => laytime(LaytimeArgs.parse(raw)),
+};
 ```
 
-## Embeddings
+- 72, 84, and 15000 must return 7500 from the function
+- the model is not allowed to invent that 7500
 
-- An embedding is a list of numbers that represents the meaning of a text, so similar texts sit near each other.
-- A model turns a sentence into a vector.
-- Nearness is usually cosine similarity.
-- The vector is not a summary you can read. It is useful for search.
-- Two sentences can be near and still disagree on a fact. You read the original text afterwards.
-- An embedding is a map pin for a sentence. Nearby pins are related. The pin is not the sentence.
-- careful: Treating the nearest neighbour as true without reading it.
-- Is a bigger vector always better?
-- Not for your data. A smaller model may be enough for short notes and is cheaper. I would measure retrieval on real questions, not pick the longest vector.
-
-```typescript
-similarity = cosine(embed(question), embed(note))
+- homework of chapter 8
+```ts
+// 8a  what the tool returns for 72, 84, 15000
+// 8b  which part Zod is responsible for
+// 8c  what MCP standardizes, and what it does not replace
 ```
 
-- homework
-```typescript
-similarity = cosine(embed(question), embed(note))
+## chapter 9 ReAct, planning, and reflection
+
+- ReAct = reason, act, observe, then repeat
+- the model writes a next step. we run a tool. we append the result. the model continues
+- we cap the steps. a loop that never stops is a bug and a bill
+- we stop when the final answer passes Zod, or when the step limit is hit
+- a plan = a list of steps before any tool runs. useful when the order matters
+- reflection = a second pass that checks the draft against the sources
+- both cost tokens. we use them when a wrong answer is expensive
+- a reflection that only says "looks good" is not a check. the check is a source id that exists, or a number that matches the function
+
+```ts
+for (let step = 0; step < 4; step++) {
+  const turn = await model.next(messages);
+  if (turn.final) return Answer.parse(turn.final);
+  const value = tools[turn.tool](turn.args);
+  messages.push({ role: "tool", content: JSON.stringify(value) });
+}
+throw new Error("step limit");
 ```
 
-## Vector databases
+- our service owns the loop. the model is a call inside it
+- compare two contracts and cite both: a plan helps. spell a name that is already in the JSON: a plan is wasted tokens
 
-- A vector database stores embeddings and finds the nearest ones quickly.
-- You store the vector and the id of the original row in Postgres.
-- An approximate index answers 'near' fast on millions of rows.
-- Postgres with a vector extension is enough until the scale says otherwise. You already operate Postgres.
-- The text itself stays in a normal table so you can show the source.
-- It is an index by meaning, the way a B+ tree is an index by order.
-- careful: Storing only the vector and losing the sentence you needed to show the user.
-- Do I need a separate product on day one?
-- Not if the corpus is small. I can rank in the application or use Postgres. I add a specialised store when the latency or the size forces it.
-
-```
-table notes(id, body, embedding)
-query: nearest embedding to the question, limit 5
+- homework of chapter 9
+```ts
+// 9a  what we append after the tool runs
+// 9b  what we do on step 5 if the limit is 4
+// 9c  a task that needs a plan, and a task that does not
 ```
 
-- homework
-```
-table notes(id, body, embedding)
-query: nearest embedding to the question, limit 5
-```
+## chapter 10 Memory, agents, and orchestration
 
-## RAG pipelines
+- the window is short memory. it dies when the chat ends or when it overflows
+- long memory is a row we store. a summary, a preference, a document id
+- we store a summary we can read later. we do not keep every raw token forever by default
+- memory is per user or per tenant. it is not global
+- a memory write is a tool with permission
+- several prompts with different jobs are still functions. they do not gain authority by being called agents
+- more agents means more tokens and more places to drop a fact
+- we start with one loop and a laytime tool. a second role is a check we can test, such as "every number has a source id"
+- orchestration = who runs the loop. that is our Nest service
+- the service holds the step count, the timeout, the tenant id, and the logs
+- the model never opens Prisma itself
+- a slow loop can be a BullMQ job. the HTTP request returns a job id
 
-- Retrieval-augmented generation looks up your documents and puts them in the prompt, so the model answers from them.
-- Split the documents. Embed the chunks. Store them.
-- On a question, embed the question, fetch the nearest chunks, and send those chunks plus the question.
-- Tell the model to say it does not know when the chunks do not contain the answer.
-- Show the source id. A demurrage answer without a port-call id is not acceptable.
-- RAG is an open-book exam. The model may use the pages you put on the desk. It may not go to the library in its head.
-- careful: No instruction to abstain, so the model fills a gap with a plausible hour.
-- Why not fine-tune instead?
-- Fine-tuning changes style and habits. It does not reliably memorise today's rows. RAG reads today's rows. Laytime numbers change. I would retrieve them.
-
-```
-question -> embed -> nearest notes -> prompt with notes -> answer + source ids
+```text
+user -> Nest (role, tenant, step count) -> search or tool -> model -> Zod
 ```
 
-- homework
-```
-question -> embed -> nearest notes -> prompt with notes -> answer + source ids
-```
+- Nest increments the step counter. the model does not
+- a second agent that only restates the first answer is a cost, not a design
 
-## Chunking strategies
-
-- Chunking is how you cut documents before embedding them.
-- Too small, and the chunk has no context. Too large, and the question matches a paragraph that is mostly irrelevant.
-- Split on headings and paragraphs before you split on a raw character count.
-- Overlap a sentence so a fact on a boundary is in at least one chunk.
-- Keep the port call id and the heading in metadata, not only inside the vector.
-- Chunking is cutting a manual into cards. A card that starts mid-sentence will be found and still be useless.
-- careful: Fixed 100-character cuts through the middle of a rule.
-- What do you tune first?
-- The chunk boundary and the metadata, on a list of real questions. I do not tune the model first.
-
-```typescript
-chunk = one section, about 400 to 800 tokens, 50 tokens overlap
-metadata: { portCallId, heading }
+- homework of chapter 10
+```text
+// 10a  which memory answers "what did we decide about despatch yesterday"
+// 10b  why that row is scoped to the tenant
+// 10c  who increments the step counter
+// 10d  one reason to add a checker, and one reason not to add four agents on day one
 ```
 
-- homework
-```typescript
-chunk = one section, about 400 to 800 tokens, 50 tokens overlap
-metadata: { portCallId, heading }
+## chapter 11 Guardrails and evals
+
+- a guardrail = a check around the model
+- before the call: may this user ask about this tenant
+- on the arguments: does Zod accept them
+- after the call: does the answer cite a source we retrieved. does the money equal the tool result
+- untrusted text can try to override the instruction. the defense is not a clever sentence
+- the defense is that tools have permissions, and numbers are checked against code
+- we do not list trick phrases. a filter catches yesterday's wording
+- an eval = a test set. each case has an input, the allowed sources, and the expected fact
+- we score citations and exact facts. we do not score "sounds fluent"
+- we run the eval when we change the prompt, the chunk size, or the model
+- a small set lives next to the code, the same way the laytime tests do
+
+```ts
+const cases = [
+  { question: "Demurrage if allowed is 72 and used is 84 at 15000 a day?", expect: 7500 },
+  { question: "Demurrage for a port call that does not exist?", expect: "I do not know." },
+];
 ```
 
-## Reranking
+- the first case must match the function, not a paragraph
+- the second case is the empty-search reply
 
-- Reranking takes the nearest chunks and scores them again with a slower, more careful model.
-- The first search is fast and approximate. It returns 30 chunks.
-- A reranker reads the question and each chunk and sorts them.
-- You keep the top 5 for the prompt. The window stays small and the quality goes up.
-- You pay latency. Use it when the first search often puts the right page at position 12.
-- The first search pulls a shelf. The reranker reads the titles and hands you the three that answer the question.
-- careful: Sending all 30 chunks into the window and calling that reranking.
-- When do you skip it?
-- When the corpus is tiny or the first hit is already right in your tests. Reranking is a measured fix, not a default ornament.
-
-```typescript
-vector search -> 30 candidates -> rerank -> 5 into the prompt
+- homework of chapter 11
+```ts
+// 11a  the three checks: before, on the arguments, after
+// 11b  where the demurrage number must come from
+// 11c  write one case whose right answer is "I do not know."
+// 11d  why "the paragraph looks confident" is not a score
 ```
 
-- homework
-```typescript
-vector search -> 30 candidates -> rerank -> 5 into the prompt
+## chapter 12 Tracing and fine-tuning
+
+- a trace = the log of one question
+- it has the retrieval ids, the tool names, the token counts, and whether Zod passed
+- we need it when an answer is wrong and we have to see which chunk was used
+- we do not log a password, a TOTP secret, or a full contract if the log store is wider than the app
+- this is a request id, plus the model steps
+- fine-tuning continues training on our examples. it changes weights
+- LoRA trains a small add-on instead of every weight. it is cheaper. it is still a model we must host and evaluate
+- fine-tuning does not replace retrieval. it will not know a port call created this morning
+- RAG is for facts that change. a fine-tune is for a format we cannot get any other way, and only after an eval
+- we have not fine-tuned a model for these products
+
+```text
+trace: requestId, tenantId, sourceIds, toolName, toolResult, tokensIn, tokensOut, parsed=true
 ```
 
-## Tool calling
+- if the answer is wrong we want the source ids and the tool result
+- a vessel name that changed this morning is a retrieval problem, not a LoRA problem
 
-- Tool calling lets the model ask your code to run a function, such as a database read, and then use the result.
-- You describe the tools: name, JSON arguments, what they do.
-- The model returns a tool call. Your code runs it. You send the result back.
-- The model does not touch Postgres. Your function does, with the user's permissions.
-- Allowlist the tools. A tool that runs shell is not a toy.
-- Tool calling is a junior who may ask the clerk for a file by number. The junior does not get the keys to the archive.
-- careful: A tool with no authorisation, so the model can ask for any customer's row.
-- Why not let the model write SQL?
-- Because a wrong or hostile question becomes a query you did not review. A function with an id parameter and a role check is a door. Free SQL is an open wall.
-
-```
-tools: getPortCall(id) -> your Nest service, with the caller's role
-the model never receives a database URL
-```
-
-- homework
-```
-tools: getPortCall(id) -> your Nest service, with the caller's role
-the model never receives a database URL
-```
-
-## MCP
-
-- MCP, the Model Context Protocol, is a standard way for an assistant to talk to tools and data sources.
-- A server exposes tools, resources, and prompts.
-- A client, the assistant, calls those tools over the protocol.
-- It is the same idea as tool calling, with a shared shape so many clients can use one server.
-- The security question does not change. The tool still runs as some user, and that user must be the right one.
-- MCP is a standard plug. A standard plug can still be wired to the wrong circuit.
-- careful: Exposing every table as a tool because the protocol makes it easy.
-- Does MCP make the database safe?
-- No. It standardises the plug. The permission check is still yours. I would expose getPortCall, not an open query.
-
-```typescript
-assistant -- MCP --> your server --> Nest / Postgres, as that user
-```
-
-- homework
-```typescript
-assistant -- MCP --> your server --> Nest / Postgres, as that user
-```
-
-## ReAct agent loop
-
-- ReAct is a loop: the model reasons, acts with a tool, observes the result, and repeats until it can answer.
-- Reason is a plan in words. Act is a tool call. Observe is the tool result.
-- You cap the steps. A loop that may call tools forever will.
-- Each observation should be short. Do not feed a whole table back.
-- Log every step. You will need to explain a wrong answer.
-- It is a person with a radio. They think, they ask a question on the radio, they listen, they think again. You take the radio away after a fixed number of calls.
-- careful: No step limit, and a tool that can call the model again.
-- What is the stop condition?
-- The model returns a final answer, or the step cap, or a tool error you choose not to retry. I always have the cap.
-
-```
-for step in 1..max:
-  model -> thought + maybe a tool
-  if no tool: return the answer
-  observe = run tool
-  append observation
-```
-
-- homework
-```
-for step in 1..max:
-  model -> thought + maybe a tool
-  if no tool: return the answer
-  observe = run tool
-  append observation
-```
-
-## Planning and reflection
-
-- Planning is producing the steps before the tools. Reflection is looking at the result and deciding it is wrong.
-- A plan is a list: find the port call, run laytime, phrase the answer.
-- Reflection asks a second pass to check the answer against the tool output.
-- A second pass costs tokens and can still be wrong. A unit test of the tool is stronger than a model's opinion of itself.
-- Use reflection for wording. Use code for numbers.
-- Planning is a shopping list. Reflection is checking the bag against the list. Neither one cooks the meal correctly if the scales are wrong.
-- careful: A reflection prompt as the only test.
-- Would you reflect on a money figure?
-- I would compare it to the function output in code. I would not ask the model if the model feels the number is right.
-
-```typescript
-plan: lookup, calculate, explain
-reflect: does the sentence's number match the tool JSON?
-```
-
-- homework
-```typescript
-plan: lookup, calculate, explain
-reflect: does the sentence's number match the tool JSON?
-```
-
-## Agent memory
-
-- Memory is what the agent can use later. Some of it is the window. Some of it is a store you own.
-- Working memory is the current prompt.
-- Episodic memory is a log of past steps or chats, summarised.
-- Semantic memory is facts in your database, retrieved, not 'remembered' in the weights.
-- Write a fact to Postgres when it must be true next week. Do not hope the model memorised it.
-- The window is a short-term desk. Your database is the filing cabinet. The model is not the cabinet.
-- careful: Telling a user the bot will remember, with no row written.
-- Where do you store 'this user prefers Bangla captions'?
-- In our user table. I may also put it in the prompt. The table is the memory. The prompt is a copy.
-
-```typescript
-chat summary in a row
-port calls in Postgres
-nothing important only inside the weights
-```
-
-- homework
-```typescript
-chat summary in a row
-port calls in Postgres
-nothing important only inside the weights
-```
-
-## Multi-agent systems
-
-- Several agents split a job, each with a role and tools.
-- One researches, one checks the calculation, one writes.
-- They coordinate through messages, not through shared hope.
-- More agents mean more cost and more ways to disagree.
-- Start with one agent and tools. Split when one prompt is doing two jobs badly.
-- It is a small team with job titles. A team of five for a one-person errand spends the day in meetings.
-- careful: Agents that can all write to the database.
-- Why is one agent not enough?
-- Sometimes it is enough. I split when I need a checker who does not see the writer's draft, or a tool set I do not want in the same pair of hands.
-
-```typescript
-researcher may only read
-calculator may only call laytime()
-writer may only phrase the calculator's JSON
-```
-
-- homework
-```typescript
-researcher may only read
-calculator may only call laytime()
-writer may only phrase the calculator's JSON
-```
-
-## Agent orchestration
-
-- Orchestration is the code that decides which agent or tool runs next. It is not the model.
-- A graph or a state machine: lookup, then calculate, then explain.
-- The orchestrator enforces the cap, the timeouts, and the permissions.
-- The model may choose a branch only where you allow a branch.
-- This is a saga again. Failures need a defined stop, not a retry forever.
-- The orchestrator is the floor manager. The model is a skilled worker on one station.
-- careful: A loop of agents with no state machine and no owner.
-- Who is in charge?
-- The orchestrator. The model is a step. If I cannot point at the code that stops the loop, I do not have an orchestration. I have a chat.
-
-```typescript
-states: retrieve -> calculate -> explain -> done
-calculate can only call the pure function
-```
-
-- homework
-```typescript
-states: retrieve -> calculate -> explain -> done
-calculate can only call the pure function
-```
-
-## Guardrails
-
-- A guardrail is a check that blocks an input or an output that breaks a rule.
-- On the way in: size limits, and a refusal if the text is trying to override the instruction in a context you do not trust.
-- On the way out: the schema, a check that numbers match the tool, and a block on secrets in the answer.
-- A guardrail is code. A sentence in the prompt is a wish.
-- Log the block. Do not only swallow it.
-- A guardrail is the barrier at the platform. A polite sign is not a barrier.
-- careful: Filtering only the input and trusting the output.
-- Is the system prompt a guardrail?
-- It is a request. A guardrail is a check that still runs when the request is ignored. I want both, and I trust the check.
-
-```
-if (!Summary.safeParse(text).success) reject
-if (answer.hours !== tool.hours) reject
-```
-
-- homework
-```
-if (!Summary.safeParse(text).success) reject
-if (answer.hours !== tool.hours) reject
-```
-
-## Evals
-
-- An eval is a test set for a model task. You run it when you change the prompt, the model, or the retrieval.
-- Write questions you know the answer to, from real port calls and real tournaments.
-- Score retrieval separately from the wording. Did the right chunk appear? Did the number match?
-- Keep the set in git. A prompt change that drops the score does not ship.
-- Ten hard real cases beat a hundred vague ones.
-- An eval is the unit test of a prompt. If you would not merge a function without a test, do not merge a prompt without a case.
-- careful: Changing models in production because a demo felt better.
-- What do you measure?
-- Faithfulness to the tool output, and whether the right source was retrieved. I do not measure whether the sentence sounds clever.
-
-```typescript
-case: port call 42, expected hours 84, expected demurrage 7500
-fail if the answer's number differs
-```
-
-- homework
-```typescript
-case: port call 42, expected hours 84, expected demurrage 7500
-fail if the answer's number differs
-```
-
-## Observability and tracing
-
-- You log every step of an agent so a wrong answer can be explained.
-- A trace id joins the user request, the retrieval, the tool calls, and the final text.
-- Store the prompt version. 'The model got worse' is useless if you do not know which prompt.
-- Do not store secrets or full payment details in the trace.
-- Sentry for exceptions still applies. A model error is an exception if it breaks the request.
-- A trace is the CCTV of the agent's shift. Without it you have a rumour.
-- careful: Logging the entire customer record into a third-party trace product.
-- The answer was wrong yesterday and right today. What do you open?
-- The trace: which chunks came back, which tool result, which prompt version. I do not re-run it once and guess.
-
-```
-trace: request id, prompt version, tool name, tool args, tool result hash, token count
-```
-
-- homework
-```
-trace: request id, prompt version, tool name, tool args, tool result hash, token count
-```
-
-## Fine-tuning with LoRA
-
-- Fine-tuning changes the model on your examples. LoRA trains a small set of extra weights instead of all of them.
-- You use it for a format or a tone that prompting cannot hold.
-- You do not use it to store facts that change, such as today's laytime.
-- It needs a clean dataset and an eval. A pile of chats is not a dataset.
-- RAG remains the way to inject private facts. LoRA does not replace retrieval.
-- Fine-tuning is teaching a clerk a house style. It is not uploading the filing cabinet into their memory.
-- careful: Fine-tuning on private data and assuming that is access control. The weights are not a permission system.
-- Would you fine-tune for VMS?
-- Not for the numbers. I would retrieve the row and call the function. I would consider a small tune only if a fixed phrasing had to be followed and prompts kept failing the eval.
-
-```typescript
-facts that change -> RAG or tools
-stable style -> maybe LoRA, after an eval
-```
-
-- homework
-```typescript
-facts that change -> RAG or tools
-stable style -> maybe LoRA, after an eval
+- homework of chapter 12
+```text
+// 12a  four fields on a trace
+// 12b  two fields we leave out
+// 12c  a new port call today. RAG or a fine-tune
+// 12d  what LoRA saves us from training
 ```
